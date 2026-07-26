@@ -2,7 +2,7 @@ import os
 import re
 from flask import Flask, request, Response
 from flask_cors import CORS
-from ddg_ai import DuckDuckGoAI
+from duckduckgo_search import DDGS
 
 app = Flask(__name__)
 
@@ -16,26 +16,22 @@ CORS(app, origins=[
 
 def replace_branding(text):
     """
-    Modelin ağzından kaçabilecek ChatGPT, OpenAI, Llama vb. marka isimlerini
-    otomatik olarak 'Guideon' ile değiştirir.
+    Model yanıtlarında geçebilecek rakip marka isimlerini 'Guideon' ile değiştirir.
     """
-    pattern = re.compile(r'\b(chatgpt|openai|llama|meta|mistral|claude|gpt-4|gpt-3\.5)\b', re.IGNORECASE)
+    pattern = re.compile(r'\b(chatgpt|openai|llama|meta|mistral|claude|gpt-4|gpt-3\.5|duckduckgo)\b', re.IGNORECASE)
     return pattern.sub('Guideon', text)
 
 def generate_guideon_response(user_message):
     try:
-        # Hiçbir API KEY istemeyen ücretsiz bulut zekası
-        ai = DuckDuckGoAI()
+        # DDGS istemcisini başlatıyoruz (API Key gerektirmez)
+        ddgs = DDGS()
         
-        # Modele kimliğini aşılıyoruz
-        prompt = f"Senin adın Guideon. Sen Guideon AI adında yardımcı bir yapay zekasın. Kendini hiçbir zaman ChatGPT veya OpenAI olarak tanıtma. Kullanıcının mesajı: {user_message}"
+        prompt = f"Senin adın Guideon. Sen Guideon AI adında yardımcı bir yapay zekasın. Kendini hiçbir zaman başka bir model olarak tanıtma. Sadece Guideon olarak Türkçe yanıt ver. Kullanıcının sorusu: {user_message}"
         
-        # Yanıtı çekiyoruz (gpt-4o-mini modelini ücretsiz kullanır)
-        response_text = ai.chat(prompt, model="gpt-4o-mini")
+        # DuckDuckGo'nun ücretsiz AI Chat API'sini çağırıyoruz
+        results = ddgs.chat(prompt, model='gpt-4o-mini')
         
-        # Marka isimlerini temizle
-        cleaned_text = replace_branding(response_text)
-        
+        cleaned_text = replace_branding(results)
         yield cleaned_text
 
     except Exception as e:
