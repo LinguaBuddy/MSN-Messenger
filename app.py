@@ -2,7 +2,7 @@ import os
 import re
 from flask import Flask, request, Response
 from flask_cors import CORS
-from duckduckgo_search import DDGS
+from g4f.client import Client
 
 app = Flask(__name__)
 
@@ -18,28 +18,34 @@ def replace_branding(text):
     """
     Model yanıtlarında geçebilecek rakip marka isimlerini 'Guideon' ile değiştirir.
     """
-    pattern = re.compile(r'\b(chatgpt|openai|llama|meta|mistral|claude|gpt-4|gpt-3\.5|duckduckgo)\b', re.IGNORECASE)
+    pattern = re.compile(r'\b(chatgpt|openai|llama|meta|mistral|claude|gpt-4|gpt-3\.5)\b', re.IGNORECASE)
     return pattern.sub('Guideon', text)
 
 def generate_guideon_response(user_message):
     try:
-        # DDGS nesnesini oluşturuyoruz
-        with DDGS() as ddgs:
-            prompt = f"Senin adın Guideon. Sen Guideon AI adında yardımcı bir yapay zekasın. Kendini hiçbir zaman başka bir model veya firma olarak tanıtma. Sadece Guideon olarak Türkçe yanıt ver. Kullanıcının sorusu: {user_message}"
-            
-            # Güncel metodu kullanarak ücretsiz sohbet yanıtını çekiyoruz
-            response_text = ddgs.chat(keywords=prompt, model="gpt-4o-mini")
-            
-            cleaned_text = replace_branding(str(response_text))
-            yield cleaned_text
+        client = Client()
+        
+        # Ücretsiz bulut modeli üzerinden yanıt oluşturuyoruz
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "Senin adın Guideon. Sen Guideon AI adında yardımcı bir yapay zekasın. Kendini hiçbir zaman ChatGPT, OpenAI veya Llama olarak tanıtma. Sadece Guideon olarak Türkçe yanıt ver."
+                },
+                {
+                    "role": "user", 
+                    "content": user_message
+                }
+            ]
+        )
+        
+        raw_text = response.choices[0].message.content
+        cleaned_text = replace_branding(raw_text)
+        yield cleaned_text
 
     except Exception as e:
-        # Eğer duckduckgo_search modül seviyesinde chat içeriyorsa doğrudan dene
-        try:
-            results = DDGS().chat(user_message)
-            yield replace_branding(str(results))
-        except Exception as inner_e:
-            yield f"Guideon şu an yanıt veremiyor: {str(e)}"
+        yield f"Guideon şu an yanıt veremiyor: {str(e)}"
 
 @app.route('/chat', methods=['POST'])
 def chat():
