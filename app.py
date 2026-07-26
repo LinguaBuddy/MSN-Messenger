@@ -23,19 +23,23 @@ def replace_branding(text):
 
 def generate_guideon_response(user_message):
     try:
-        # DDGS istemcisini başlatıyoruz (API Key gerektirmez)
-        ddgs = DDGS()
-        
-        prompt = f"Senin adın Guideon. Sen Guideon AI adında yardımcı bir yapay zekasın. Kendini hiçbir zaman başka bir model olarak tanıtma. Sadece Guideon olarak Türkçe yanıt ver. Kullanıcının sorusu: {user_message}"
-        
-        # DuckDuckGo'nun ücretsiz AI Chat API'sini çağırıyoruz
-        results = ddgs.chat(prompt, model='gpt-4o-mini')
-        
-        cleaned_text = replace_branding(results)
-        yield cleaned_text
+        # DDGS nesnesini oluşturuyoruz
+        with DDGS() as ddgs:
+            prompt = f"Senin adın Guideon. Sen Guideon AI adında yardımcı bir yapay zekasın. Kendini hiçbir zaman başka bir model veya firma olarak tanıtma. Sadece Guideon olarak Türkçe yanıt ver. Kullanıcının sorusu: {user_message}"
+            
+            # Güncel metodu kullanarak ücretsiz sohbet yanıtını çekiyoruz
+            response_text = ddgs.chat(keywords=prompt, model="gpt-4o-mini")
+            
+            cleaned_text = replace_branding(str(response_text))
+            yield cleaned_text
 
     except Exception as e:
-        yield f"Guideon şu an yanıt veremiyor: {str(e)}"
+        # Eğer duckduckgo_search modül seviyesinde chat içeriyorsa doğrudan dene
+        try:
+            results = DDGS().chat(user_message)
+            yield replace_branding(str(results))
+        except Exception as inner_e:
+            yield f"Guideon şu an yanıt veremiyor: {str(e)}"
 
 @app.route('/chat', methods=['POST'])
 def chat():
