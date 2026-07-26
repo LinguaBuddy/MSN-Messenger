@@ -1,3 +1,2 @@
-Flask
-Flask-CORS
-scikit-learn
+flask
+flask-cors
